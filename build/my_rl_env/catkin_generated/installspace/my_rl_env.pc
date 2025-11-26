@@ -1,0 +1,8 @@
+prefix=/home/lst/my_work/rl_workspace/install
+
+Name: my_rl_env
+Description: Description of my_rl_env
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

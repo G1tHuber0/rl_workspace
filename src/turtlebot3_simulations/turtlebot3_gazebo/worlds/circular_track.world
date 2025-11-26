@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <world name="circular_track">
+    <!-- 地面 -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+    <!-- 灯光 -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- 障碍物 1 -->
+    <model name="obs1">
+      <pose>0.9 0.9 0.1 0 0 0</pose>  <!-- 障碍物位置 -->
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.2</radius>  <!-- 障碍物大小 -->
+            </sphere>
+          </geometry>
+        </collision> 
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.2</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Black</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 障碍物 2 -->
+    <model name="obs2">
+      <pose>1.5 3.8 0.1 0 0 0</pose>  <!-- 障碍物位置 -->
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.3</radius>  <!-- 障碍物大小 -->
+            </sphere>
+          </geometry>
+        </collision> 
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.3</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Black</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 障碍物 3 -->
+    <model name="obs3">
+      <pose>3.5 1.2 0. 0 0 0</pose>  <!-- 障碍物位置 -->
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.3</radius>  <!-- 障碍物大小 -->
+            </sphere>
+          </geometry>
+        </collision> 
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.3</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Black</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <!-- 障碍物 4 -->
+    <model name="obs4">
+      <pose>4.1 4.1 0.1 0 0 0</pose>  <!-- 障碍物位置 -->
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.2</radius>  <!-- 障碍物大小 -->
+            </sphere>
+          </geometry>
+        </collision> 
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.2</radius>
+            </sphere>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Black</name>
+            </script>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
