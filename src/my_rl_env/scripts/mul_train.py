@@ -8,7 +8,7 @@ import argparse
 
 
 # ================= 配置 =================
-DEFAULT_NUM_WORKERS = 6   # 默认并行环境数量
+DEFAULT_NUM_WORKERS = 1   # 默认并行环境数量
 START_ROS_PORT = 11311    # 起始 ROS Master 端口
 START_GAZEBO_PORT = 11345 # 起始 Gazebo 端口
 LAUNCH_PKG = "my_rl_env"  # 你的包名

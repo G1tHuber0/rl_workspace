@@ -3,7 +3,7 @@ import torch
 import argparse
 import os
 
-torch.set_num_threads(2)
+torch.set_num_threads(4)
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 
@@ -36,14 +36,14 @@ ALGOS = {
 HYPERPARAMS = {
     "dqn": {
         "policy": "MlpPolicy",
-        "learning_rate": 7e-4, 
-        "buffer_size": 100_000, # 并行后数据量大，加大经验池
-        "learning_starts": 10_000, 
-        "batch_size": 128,      
+        "learning_rate": 3e-4, 
+        "buffer_size": 100000, # 并行后数据量大，加大经验池
+        "learning_starts": 20_000, 
+        "batch_size": 256,      
         "exploration_fraction": 0.4, 
         "exploration_final_eps": 0.05,
         "gamma": 0.99,            
-        "target_update_interval": 1000,
+        "target_update_interval": 1024,
         "gradient_steps" : 1,
     },
     "ppo": {
@@ -55,6 +55,7 @@ HYPERPARAMS = {
         "ent_coef": 0.01,
         "gae_lambda": 0.95,
         "clip_range": 0.2,
+        "policy_kwargs": dict(net_arch=dict(pi=[256, 256], vf=[256, 256])),
     },
     "a2c": {
         "policy": "MlpPolicy",
@@ -80,9 +81,9 @@ def make_env(rank, seed=0):
 
 def get_args():
     parser = argparse.ArgumentParser(description="TurtleBot3 并行训练脚本")
-    parser.add_argument("--algo", type=str, default="ppo", choices=ALGOS.keys())
+    parser.add_argument("--algo", type=str, default="dqn", choices=ALGOS.keys())
     parser.add_argument("--steps", type=int, default=500000, help="训练总步数")
-    parser.add_argument("--n_envs", type=int, default=6, help="并行环境数量 (需与 launch_parallel.py 一致)")
+    parser.add_argument("--n_envs", type=int, default=1, help="并行环境数量 (需与 launch_parallel.py 一致)")
     parser.add_argument("--save_name", type=str, default="turtlebot_parallel")
     parser.add_argument("--load", type=str, default=None)
     return parser.parse_args()

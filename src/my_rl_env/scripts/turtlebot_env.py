@@ -181,36 +181,29 @@ class TurtleBotEnv(gym.Env):
         # 1. 执行动作 (Action Execution)
         # ------------------------------------------------------
         vel = Twist()
-        # 稍微降低线速度，提高角速度，增加灵活性
-        if action == 0:   
+        
+        # === 修改点 1：降低转弯速度，让动作更可控 ===
+        # 原来是 2.0，太快了，容易这就好比让新手开法拉利
+        angular_speed = 1.0 
+        
+        if action == 0:   # 前进
             vel.linear.x = 0.2
             vel.angular.z = 0.0
         elif action == 1: # 左转
             vel.linear.x = 0.05
-            vel.angular.z = 2.0 
+            vel.angular.z = angular_speed
         elif action == 2: # 右转
             vel.linear.x = 0.05
-            vel.angular.z = -2.0
+            vel.angular.z = -angular_speed
         
         self.pub.publish(vel)
-        
-        # 注意: rospy.sleep 会依赖于仿真时间。
-        # 在并行训练中，只要每个 Gazebo 实例都在发布 /clock，这个 sleep 就会正常工作。
-        ##########################################################################rospy.sleep(0.05) 
+        # 这里的 sleep 在并行训练中可能不准确，主要靠 rospy 的频率控制
+        # 如果是并行，建议注释掉或改极小，因为 SubprocVecEnv 会全速跑
+        # rospy.sleep(0.05) 
 
         # ------------------------------------------------------
-        # 2. 状态更新 (State Update)
-        # ------------------------------------------------------
-        # 记录路径用于可视化
-        pose_stamped = PoseStamped()
-        pose_stamped.header.frame_id = "odom"
-        pose_stamped.header.stamp = rospy.Time.now()
-        pose_stamped.pose.position = self.position
-        pose_stamped.pose.orientation.w = 1.0
-        self.path_record.poses.append(pose_stamped)
-        if len(self.path_record.poses) > 500: self.path_record.poses.pop(0)
-        self.path_pub.publish(self.path_record)
-
+        # 2. 状态更新
+       
         # 获取新的距离和角度
         dist, heading = self.get_goal_info()
         
@@ -220,56 +213,52 @@ class TurtleBotEnv(gym.Env):
         obs = np.concatenate((self.scan_data, [norm_dist, norm_heading])).astype(np.float32)
 
         # ------------------------------------------------------
-        # 3. 奖励计算 (Reward Engineering) - 核心部分！
+        # 3. 奖励计算 (优化版)
         # ------------------------------------------------------
         reward = 0.0
         terminated = False
-        min_laser = np.min(self.scan_data) # 归一化后的雷达最小值 (0~1)
+        min_laser = np.min(self.scan_data) 
         
-        # === A. 关键：进度奖励 (Progress Reward) ===
-        # 这一步是让它学会“趋利”的关键。
-        # 靠近了给正分，远离了给负分。放大系数 30 倍，让它比生存奖励更有吸引力。
-        # 必须在判断撞墙/到达之前计算
-        reward += (self.current_dist - dist) * 40.0
-        self.current_dist = dist # 更新上一次的距离
-
-        # === B. 撞墙惩罚 (Collision) ===
-        # 0.06 * 3.5 ≈ 0.21m (机器人半径约0.1m，预留0.1m缓冲)
+        # A. 撞墙惩罚 (保持 -100)
         if min_laser < 0.05:
-            reward = -50.0
+            reward = -200.0
             terminated = True
-            # 如果是并行训练，可以注释掉 print 以免刷屏
-            # debug_id = self.worker_id if self.worker_id is not None else "Single"
-            # print(f"[{debug_id}] 💥 撞墙! 距离目标: {dist:.2f}m")
-            self.pub.publish(Twist()) # 停车
+            # print("� 撞墙!") 
+            self.pub.publish(Twist()) 
         
-        # === C. 抵达目标 (Success) ===
-        elif dist < 0.1:
-            reward = 100.0
+        # B. 抵达目标 (保持 100)
+        elif dist < 0.15: # 稍微放宽一点点判定范围到 0.15
+            reward = 200.0
             terminated = True
-            # debug_id = self.worker_id if self.worker_id is not None else "Single"
-            # print(f"[{debug_id}] 🎉 成功! 目标:({self.goal_x:.2f}, {self.goal_y:.2f})")
-            self.pub.publish(Twist()) # 停车
+            # print("� 成功!")
+            self.pub.publish(Twist()) 
             
         else:
-            # === D. 时间惩罚 (Time Penalty) ===
-            # 强迫它走直线，不要磨蹭，不要原地转圈
-            reward -= 0.05
+            # === 修改点 2：进度奖励与朝向挂钩 ===
+            # 只有当大致朝向目标时 (|heading| < 90度)，前进才给高分
+            # 否则如果是背对着目标倒车(虽然我们没有倒车动作)或者乱跑，给分少
+            progress = (self.current_dist - dist) * 10.0
+            reward += progress
             
-            # === E. 避障势场 (Danger Penalty) ===
-            # 当距离障碍物 < 0.5米 (0.15 * 3.5) 时
-            # 距离越近，扣分越狠。这能教会它“贴墙走可以，但别太近”
-            if min_laser < 0.15:
-                # 扣分范围: 0 ~ -0.75
-                reward -= (0.15 - min_laser) * 15.0
+            self.current_dist = dist 
+
+            # === 修改点 3：时间惩罚 ===
+            reward -= 0.1
             
-            # === F. 朝向奖励 (Heading Reward) - 可选 ===
-            # 鼓励它把头对准目标，减小搜索空间
-            # 如果朝向偏差 < 45度 (0.25 * pi)
-            if abs(heading) < 0.2: # 对得很准
-                reward += 0.1
-            elif abs(heading) > 1.5: # 背对目标
-                reward -= 0.1
+            # === 修改点 4：减轻避障势场 ===
+            # 现在改成 * 3.0，稍微警告一下就行
+            if min_laser < 0.2:
+                reward -= (0.2 - min_laser) * 3.0
+            
+            # 4. 朝向奖励：删！或者给极小
+            # 之前给 +0.05，它学会了原地转头骗分。
+            # 现在改成：只有在真正前进的时候(action==0)，且方向对了，才给一点点
+            if action == 0 and abs(heading) < 0.5:
+                reward += 0.15
+            
+            # 额外惩罚：如果距离目标很远还转圈(不走)，重罚
+            if action != 0:
+                reward -= 0.05
 
         return obs, reward, terminated, False, {}
 
